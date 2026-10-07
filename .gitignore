@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+# Dataset is downloaded by data.py (no redistribution license)
+data/
+train_log.txt
