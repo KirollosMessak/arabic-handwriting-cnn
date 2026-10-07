@@ -1,13 +1,18 @@
 """Draw an Arabic letter and the CNN recognizes it. Runs on Hugging Face Spaces (free CPU)."""
 
+from pathlib import Path
+
 import gradio as gr
 import torch
 
 from data import LETTERS, NAMES, NUM_CLASSES, preprocess_drawing
 from model import ArabicCNN
 
+# models/best.pt in the repo; best.pt next to app.py in a flat Hugging Face Space upload
+MODEL_PATH = next(p for p in (Path("models/best.pt"), Path("best.pt")) if p.exists())
+
 model = ArabicCNN(NUM_CLASSES)
-model.load_state_dict(torch.load("models/best.pt", map_location="cpu"))
+model.load_state_dict(torch.load(MODEL_PATH, map_location="cpu"))
 model.eval()
 
 
