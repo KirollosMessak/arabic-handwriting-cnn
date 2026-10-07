@@ -1,4 +1,4 @@
-"""Draw an Arabic letter and the CNN recognizes it. Runs on Hugging Face Spaces (free CPU)."""
+"""Draw an Arabic letter and the CNN recognizes it. Runs locally or on Hugging Face Spaces (ZeroGPU)."""
 
 from pathlib import Path
 
@@ -8,6 +8,15 @@ import torch
 from data import LETTERS, NAMES, NUM_CLASSES, preprocess_drawing
 from model import ArabicCNN
 
+try:
+    # Free Hugging Face Gradio Spaces run on ZeroGPU, which requires at least one @spaces.GPU function.
+    import spaces
+
+    gpu = spaces.GPU(duration=10)
+except ImportError:  # running locally
+    def gpu(fn):
+        return fn
+
 # models/best.pt in the repo; best.pt next to app.py in a flat Hugging Face Space upload
 MODEL_PATH = next(p for p in (Path("models/best.pt"), Path("best.pt")) if p.exists())
 
@@ -16,14 +25,20 @@ model.load_state_dict(torch.load(MODEL_PATH, map_location="cpu"))
 model.eval()
 
 
+@gpu
+def classify(x: torch.Tensor) -> torch.Tensor:
+    # The model is tiny (290K parameters), so CPU inference is fast even on ZeroGPU.
+    with torch.no_grad():
+        return model(x).softmax(1)[0]
+
+
 def recognize(drawing):
     if drawing is None or drawing.get("composite") is None:
         return {}, None
     x = preprocess_drawing(drawing["composite"])
     if x.max() == 0:
         return {}, None
-    with torch.no_grad():
-        probs = model(x).softmax(1)[0]
+    probs = classify(x)
     labels = {f"{LETTERS[i]}  ({NAMES[i]})": float(p) for i, p in enumerate(probs)}
     # Also show what the model actually "sees", enlarged with sharp pixels
     preview = torch.nn.functional.interpolate(x, scale_factor=5, mode="nearest")[0, 0].numpy()
